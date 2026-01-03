@@ -1,13 +1,222 @@
-Index.html ← 下のコード
-alre.png ← アルエ＋馬（横向き）
-bg.png ← 背景（横につながる）
-obstacle.png ← 障害物
-ending_run.png
-ending_stop.png
-bgm.mp3
-boost.wav
-fall.wav
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>疾駆のアルエ</title>
+<style>
+  body { margin:0; background:#000; overflow:hidden; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
 
-疾駆のアルエ body { margin:0; background:#000; overflow:hidden; } canvas { display:block; } 
+<canvas id="game"></canvas>
 
-/* ===== 初期設定 ===== */ const canvas = document.getElementById("game"); const ctx = canvas.getContext("2d"); canvas.width = innerWidth; canvas.height = innerHeight; /* ===== 画像 ===== */ const bg = new Image(); bg.src = "bg.png"; const alre = new Image(); alre.src = "alre.png"; const obsImg = new Image(); obsImg.src = "obstacle.png"; /* ===== 音 ===== */ const bgm = new Audio("bgm.mp3"); bgm.loop = true; bgm.volume = 0.5; const boostSE = new Audio("boost.wav"); const fallSE = new Audio("fall.wav"); let audioStarted = false; /* ===== 状態 ===== */ let bgX = 0; let speed = 4; let y = canvas.height * 0.6; let vy = 0; let gravity = 0.7; let jumping = false; let obstacles = []; let score = 0; let trust = 50; let gameOver = false; let endType = null; /* ===== 分岐 ===== */ let route = "main"; let atBranch = false; /* ===== 天候 ===== */ const weathers = ["sunny","rain","night"]; let weather = weathers[Math.floor(Math.random()*weathers.length)]; /* ===== 会話 ===== */ let currentLine = ""; const weatherLines = { sunny: ["……今日は走りやすい。","悪くない空だ。"], rain: ["雨か。足、取られるなよ。","無理すんな。"], night: ["夜は静かだ。","……昔を思い出す。"] }; /* ===== 障害物 ===== */ function spawnObstacle(){ obstacles.push({x:canvas.width,y:y+40,w:60,h:60}); } setInterval(spawnObstacle,2000); /* ===== 操作 ===== */ canvas.addEventListener("touchstart",e=>{ if(!audioStarted){bgm.play();audioStarted=true;} if(gameOver) return; if(atBranch){ const x = e.touches[0].clientX; if(x < canvas.width/2){ route="safe"; }else if(trust>70){ route="danger"; } atBranch=false; return; } if(!jumping){ vy=-14; jumping=true; } speed=6; boostSE.currentTime=0; boostSE.play(); }); canvas.addEventListener("touchend",()=>{ speed=4; }); canvas.addEventListener("click",()=>{ if(gameOver){ location.reload(); } }); /* ===== 更新 ===== */ let runTime=0; function update(){ if(gameOver) return; score += speed*0.1; runTime += speed*0.1; bgX -= speed; if(bgX <= -canvas.width) bgX = 0; vy += gravity; y += vy; if(y >= canvas.height*0.6){ y = canvas.height*0.6; vy = 0; jumping=false; } obstacles.forEach(o=>o.x-=speed); obstacles = obstacles.filter(o=>o.x>-o.w); // 信頼度 if(speed<=4.5 && !jumping) trust+=0.02; if(speed>5.5) trust-=0.05; trust=Math.max(0,Math.min(100,trust)); // 衝突 obstacles.forEach(o=>{ if(80 < o.x+o.w && 160 > o.x && y < o.y+o.h && y+80 > o.y){ trust-=20; gameOver=true; fallSE.play(); bgm.pause(); } }); // 分岐 if(score>1000 && route==="main") atBranch=true; // 会話 currentLine = weatherLines[weather][Math.floor(score/300)%2]; // ゴール if(score>2000){ gameOver=true; bgm.pause(); endType = (trust>=80 && route==="danger") ? "run" : "stop"; } } /* ===== 描画 ===== */ function draw(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.drawImage(bg,bgX,0,canvas.width,canvas.height); ctx.drawImage(bg,bgX+canvas.width,0,canvas.width,canvas.height); // 天候 if(weather==="rain"){ ctx.fillStyle="rgba(180,180,255,0.1)"; ctx.fillRect(0,0,canvas.width,canvas.height); } if(weather==="night"){ ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.fillRect(0,0,canvas.width,canvas.height); } // キャラ揺れ const bounce = Math.sin(runTime)*(trust/20); const tilt = Math.sin(runTime)*0.03; ctx.save(); ctx.translate(160,y-120+bounce); ctx.rotate(tilt); ctx.drawImage(alre,-80,-80,160,160); ctx.restore(); obstacles.forEach(o=>{ ctx.drawImage(obsImg,o.x,o.y,o.w,o.h); }); // UI ctx.fillStyle="#fff"; ctx.font="18px sans-serif"; ctx.fillText("距離 "+Math.floor(score),20,40); ctx.fillText("信頼",20,70); ctx.fillStyle="#0f0"; ctx.fillRect(70,60,trust*1.2,10); // 会話 ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(20,canvas.height-90,canvas.width-40,50); ctx.fillStyle="#fff"; ctx.fillText(currentLine,40,canvas.height-55); // 分岐表示 if(atBranch){ ctx.fillStyle="rgba(0,0,0,0.7)"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle="#fff"; ctx.font="22px sans-serif"; ctx.fillText("左：安全 / 右：危険",canvas.width/2-100,canvas.height/2); } // エンディング if(gameOver && endType){ const img = new Image(); img.src = endType==="run"?"ending_run.png":"ending_stop.png"; ctx.drawImage(img,0,0,canvas.width,canvas.height); } } /* ===== ループ ===== */ function loop(){ update(); draw(); requestAnimationFrame(loop); } loop();
+<script>
+/* ===== 初期設定 ===== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+/* ===== 画像 ===== */
+const bg = new Image(); bg.src = "bg.png";
+const alre = new Image(); alre.src = "alre.png";
+const obsImg = new Image(); obsImg.src = "obstacle.png";
+const endingRunImg = new Image(); endingRunImg.src = "ending_run.png";
+const endingStopImg = new Image(); endingStopImg.src = "ending_stop.png";
+
+/* ===== 音 ===== */
+const bgm = new Audio("bgm.mp3"); bgm.loop = true; bgm.volume = 0.5;
+const boostSE = new Audio("boost.wav");
+const fallSE = new Audio("fall.wav");
+let audioStarted = false;
+
+/* ===== 状態 ===== */
+let bgX = 0;
+let speed = 4;
+let y = canvas.height * 0.6;
+let vy = 0;
+let gravity = 0.7;
+let jumping = false;
+
+let obstacles = [];
+let score = 0;
+let trust = 50;
+let gameOver = false;
+let endType = null;
+
+/* ===== 分岐 ===== */
+let route = "main";
+let atBranch = false;
+
+/* ===== 天候 ===== */
+const weathers = ["sunny","rain","night"];
+let weather = weathers[Math.floor(Math.random()*weathers.length)];
+
+/* ===== 会話 ===== */
+let currentLine = "";
+const weatherLines = {
+  sunny: ["……今日は走りやすい。","悪くない空だ。"],
+  rain: ["雨か。足、取られるなよ。","無理すんな。"],
+  night: ["夜は静かだ。","……昔を思い出す。"]
+};
+
+/* ===== 障害物 ===== */
+function spawnObstacle(){
+  obstacles.push({x:canvas.width,y:y+40,w:60,h:60});
+}
+setInterval(spawnObstacle,2000);
+
+/* ===== 操作 ===== */
+canvas.addEventListener("touchstart",e=>{
+  if(!audioStarted){ bgm.play(); audioStarted=true; }
+  if(gameOver) return;
+
+  if(atBranch){
+    const x = e.touches[0].clientX;
+    if(x < canvas.width/2){
+      route="safe";
+    }else if(trust>70){
+      route="danger";
+    }
+    atBranch=false;
+    return;
+  }
+
+  if(!jumping){ vy=-14; jumping=true; }
+  speed=6;
+  boostSE.currentTime=0;
+  boostSE.play();
+});
+
+canvas.addEventListener("touchend",()=>{ speed=4; });
+canvas.addEventListener("click",()=>{ if(gameOver){ location.reload(); } });
+
+/* ===== 更新 ===== */
+let runTime=0;
+
+function update(){
+  if(gameOver) return;
+
+  score += speed*0.1;
+  runTime += speed*0.1;
+
+  bgX -= speed;
+  if(bgX <= -canvas.width) bgX = 0;
+
+  vy += gravity;
+  y += vy;
+  if(y >= canvas.height*0.6){
+    y = canvas.height*0.6;
+    vy = 0;
+    jumping=false;
+  }
+
+  obstacles.forEach(o=>o.x-=speed);
+  obstacles = obstacles.filter(o=>o.x>-o.w);
+
+  // 信頼度
+  if(speed<=4.5 && !jumping) trust+=0.02;
+  if(speed>5.5) trust-=0.05;
+  trust=Math.max(0,Math.min(100,trust));
+
+  // 衝突判定
+  obstacles.forEach(o=>{
+    if(80 < o.x+o.w && 160 > o.x && y < o.y+o.h && y+80 > o.y){
+      trust-=20;
+      gameOver=true;
+      fallSE.play();
+      bgm.pause();
+    }
+  });
+
+  // 分岐
+  if(score>1000 && route==="main") atBranch=true;
+
+  // 会話
+  currentLine = weatherLines[weather][Math.floor(score/300)%2];
+
+  // ゴール
+  if(score>2000){
+    gameOver=true;
+    bgm.pause();
+    endType = (trust>=80 && route==="danger") ? "run" : "stop";
+  }
+}
+
+/* ===== 描画 ===== */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 背景ループ
+  ctx.drawImage(bg,bgX,0,canvas.width,canvas.height);
+  ctx.drawImage(bg,bgX+canvas.width,0,canvas.width,canvas.height);
+
+  // 天候
+  if(weather==="rain"){
+    ctx.fillStyle="rgba(180,180,255,0.1)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+  if(weather==="night"){
+    ctx.fillStyle="rgba(0,0,0,0.4)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  // キャラ揺れ
+  const bounce = Math.sin(runTime)*(trust/20);
+  const tilt = Math.sin(runTime)*0.03;
+
+  ctx.save();
+  ctx.translate(160,y-120+bounce);
+  ctx.rotate(tilt);
+  ctx.drawImage(alre,-80,-80,160,160);
+  ctx.restore();
+
+  // 障害物
+  obstacles.forEach(o=>{
+    ctx.drawImage(obsImg,o.x,o.y,o.w,o.h);
+  });
+
+  // UI
+  ctx.fillStyle="#fff";
+  ctx.font="18px sans-serif";
+  ctx.fillText("距離 "+Math.floor(score),20,40);
+  ctx.fillText("信頼",20,70);
+  ctx.fillStyle="#0f0";
+  ctx.fillRect(70,60,trust*1.2,10);
+
+  // 会話
+  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.fillRect(20,canvas.height-90,canvas.width-40,50);
+  ctx.fillStyle="#fff";
+  ctx.fillText(currentLine,40,canvas.height-55);
+
+  // 分岐表示
+  if(atBranch){
+    ctx.fillStyle="rgba(0,0,0,0.7)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#fff";
+    ctx.font="22px sans-serif";
+    ctx.fillText("左：安全 / 右：危険",canvas.width/2-100,canvas.height/2);
+  }
+
+  // エンディング
+  if(gameOver && endType){
+    ctx.drawImage(endType==="run"?endingRunImg:endingStopImg,0,0,canvas.width,canvas.height);
+  }
+}
+
+/* ===== ループ ===== */
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+</script>
+
+</body>
+</html>
